@@ -25,9 +25,23 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refreshes the auth session cookie on every request. Route protection
-  // (redirect to /login when signed out) is added once the login screen exists.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
+
+  if (!user && !isAuthRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
