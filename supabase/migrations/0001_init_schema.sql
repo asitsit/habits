@@ -75,15 +75,19 @@ alter table dimensions enable row level security;
 alter table entries enable row level security;
 alter table entry_scores enable row level security;
 
+drop policy if exists "themes_owner" on themes;
 create policy "themes_owner" on themes
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "dimensions_owner" on dimensions;
 create policy "dimensions_owner" on dimensions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "entries_owner" on entries;
 create policy "entries_owner" on entries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "entry_scores_owner" on entry_scores;
 create policy "entry_scores_owner" on entry_scores
   for all using (
     exists (
