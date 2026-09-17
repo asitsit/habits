@@ -8,19 +8,28 @@ export function ScaleSelector({
   dimensionId,
   color,
   initialValue,
+  onSaved,
 }: {
   date: string;
   dimensionId: string;
   color: string;
   initialValue: number | null;
+  onSaved?: () => void;
 }) {
   const [value, setValue] = useState(initialValue);
   const [, startTransition] = useTransition();
 
-  function handleSelect(v: number) {
-    setValue(v);
-    startTransition(() => {
-      saveScale(date, dimensionId, v);
+  function handleSelect(n: number) {
+    const previous = value;
+    setValue(n);
+    startTransition(async () => {
+      try {
+        const res = await saveScale(date, dimensionId, n);
+        if (!res.ok) throw new Error("save failed");
+        onSaved?.();
+      } catch {
+        setValue(previous);
+      }
     });
   }
 

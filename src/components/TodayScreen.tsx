@@ -1,189 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Brain, Heart, Dumbbell, Sparkles, type LucideIcon } from "lucide-react";
-import { getTodayData } from "@/app/actions";
-import type { Dimension, TodayData } from "@/lib/types";
+import { getDayStatuses } from "@/app/actions";
+import { addDays, formatDayLabel, startOfWeek, toIso, todayIso as computeTodayIso } from "@/lib/date";
 import { WeekStrip } from "./WeekStrip";
-import { ScaleSelector } from "./ScaleSelector";
-import { BooleanToggle } from "./BooleanToggle";
-import { NoteField } from "./NoteField";
+import { DayEntryForm } from "./DayEntryForm";
 import { SignOutButton } from "./SignOutButton";
-
-const THEME_ICONS: Record<string, LucideIcon> = {
-  Tête: Brain,
-  Cœur: Heart,
-  Corps: Dumbbell,
-};
-
-const NEVER_BEFORE_COLOR = "#F59E0B";
-
-function todayIso() {
-  const d = new Date();
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 10);
-}
-
-type Row =
-  | { kind: "single"; dim: Dimension }
-  | { kind: "group"; label: string; dims: Dimension[] };
-
-function groupDimensions(dims: Dimension[]): Row[] {
-  const rows: Row[] = [];
-  for (const dim of dims) {
-    if (dim.group_label) {
-      const last = rows[rows.length - 1];
-      if (last?.kind === "group" && last.label === dim.group_label) {
-        last.dims.push(dim);
-        continue;
-      }
-      rows.push({ kind: "group", label: dim.group_label, dims: [dim] });
-    } else {
-      rows.push({ kind: "single", dim });
-    }
-  }
-  return rows;
-}
+import { BottomNav } from "./BottomNav";
 
 export function TodayScreen() {
-  const [date] = useState(todayIso);
-  const [data, setData] = useState<TodayData | null>(null);
+  const [today] = useState(computeTodayIso);
+  const [selected, setSelected] = useState(today);
+  const [doneDates, setDoneDates] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    getTodayData(date).then(setData);
-  }, [date]);
+  const weekStart = startOfWeek(new Date(`${today}T00:00:00`));
+  const weekEnd = addDays(weekStart, 6);
 
-  const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const rangeStart = toIso(weekStart);
+  const rangeEnd = toIso(weekEnd);
 
-  if (!data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-zinc-500">
-        Chargement…
-      </div>
-    );
+  function refreshStatuses() {
+    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
   }
 
-  const scoreByDimension = new Map(data.scores.map((s) => [s.dimension_id, s]));
-  const themedDims = data.dimensions.filter((d) => d.theme_id);
-  const orphanDims = data.dimensions.filter((d) => !d.theme_id);
+  useEffect(() => {
+    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
+  }, [rangeStart, rangeEnd]);
+
+  const dateLabel = formatDayLabel(selected);
 
   return (
-    <div className="min-h-screen bg-black pb-16 text-zinc-50">
+    <div className="min-h-screen bg-black pb-24 text-zinc-50">
       <header className="sticky top-0 z-10 space-y-4 border-b border-zinc-900 bg-black/95 px-5 pb-4 pt-6 backdrop-blur">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-zinc-500 capitalize">{dateLabel}</p>
-            <h1 className="text-lg font-semibold">Aujourd&apos;hui</h1>
+            <h1 className="text-lg font-semibold">
+              {selected === today ? "Aujourd'hui" : "Modifier ce jour"}
+            </h1>
           </div>
           <SignOutButton />
         </div>
-        <WeekStrip todayIso={date} />
+        <WeekStrip
+          weekStart={weekStart}
+          todayIso={today}
+          selectedIso={selected}
+          doneDates={doneDates}
+          onSelect={setSelected}
+        />
       </header>
 
-      <main className="space-y-4 px-5 pt-5">
-        {data.themes.map((theme) => {
-          const dims = themedDims.filter((d) => d.theme_id === theme.id);
-          if (dims.length === 0) return null;
-          const Icon = THEME_ICONS[theme.name] ?? Sparkles;
-          const rows = groupDimensions(dims);
-
-          return (
-            <section
-              key={theme.id}
-              className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4"
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <Icon size={18} style={{ color: theme.color }} />
-                <h2 className="text-base font-semibold">{theme.name}</h2>
-              </div>
-
-              <div className="space-y-3">
-                {rows.map((row) =>
-                  row.kind === "single" ? (
-                    <div
-                      key={row.dim.id}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <span className="text-sm text-zinc-300">{row.dim.name}</span>
-                      {row.dim.type === "scale" ? (
-                        <ScaleSelector
-                          date={date}
-                          dimensionId={row.dim.id}
-                          color={theme.color}
-                          initialValue={
-                            scoreByDimension.get(row.dim.id)?.value_int ?? null
-                          }
-                        />
-                      ) : (
-                        <BooleanToggle
-                          date={date}
-                          dimensionId={row.dim.id}
-                          color={theme.color}
-                          initialValue={
-                            scoreByDimension.get(row.dim.id)?.value_bool ?? null
-                          }
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div key={row.label}>
-                      <p className="mb-2 text-sm text-zinc-300">{row.label}</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {row.dims.map((dim) => (
-                          <div
-                            key={dim.id}
-                            className="flex flex-col items-center gap-2 rounded-xl bg-white/5 py-3"
-                          >
-                            <span className="text-center text-xs text-zinc-400">
-                              {dim.name.replace(`${row.label} - `, "")}
-                            </span>
-                            <BooleanToggle
-                              date={date}
-                              dimensionId={dim.id}
-                              color={theme.color}
-                              initialValue={
-                                scoreByDimension.get(dim.id)?.value_bool ?? null
-                              }
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </section>
-          );
-        })}
-
-        {orphanDims.map((dim) => (
-          <section
-            key={dim.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} style={{ color: NEVER_BEFORE_COLOR }} />
-              <span className="text-sm text-zinc-300">{dim.name}</span>
-            </div>
-            <BooleanToggle
-              date={date}
-              dimensionId={dim.id}
-              color={NEVER_BEFORE_COLOR}
-              initialValue={scoreByDimension.get(dim.id)?.value_bool ?? null}
-            />
-          </section>
-        ))}
-
-        <section className="space-y-2">
-          <h2 className="px-1 text-sm font-medium text-zinc-400">Note du jour</h2>
-          <NoteField date={date} initialValue={data.entry?.note_text ?? ""} />
-        </section>
+      <main className="px-5 pt-5">
+        <DayEntryForm key={selected} date={selected} onSaved={refreshStatuses} />
       </main>
+
+      <BottomNav />
     </div>
   );
 }

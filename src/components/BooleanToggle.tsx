@@ -8,20 +8,29 @@ export function BooleanToggle({
   dimensionId,
   color,
   initialValue,
+  onSaved,
 }: {
   date: string;
   dimensionId: string;
   color: string;
   initialValue: boolean | null;
+  onSaved?: () => void;
 }) {
   const [value, setValue] = useState(initialValue ?? false);
   const [, startTransition] = useTransition();
 
   function toggle() {
+    const previous = value;
     const next = !value;
     setValue(next);
-    startTransition(() => {
-      saveBoolean(date, dimensionId, next);
+    startTransition(async () => {
+      try {
+        const res = await saveBoolean(date, dimensionId, next);
+        if (!res.ok) throw new Error("save failed");
+        onSaved?.();
+      } catch {
+        setValue(previous);
+      }
     });
   }
 
