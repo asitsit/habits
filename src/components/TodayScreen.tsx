@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchDayStatuses } from "@/lib/queries";
 import { addDays, formatDayLabel, startOfWeek, toIso, todayIso as computeTodayIso } from "@/lib/date";
-import { WeekStrip } from "./WeekStrip";
+import { WEEKS_BACK, WeekStrip, type WeekStripHandle } from "./WeekStrip";
 import { DayEntryForm } from "./DayEntryForm";
 import { SignOutButton } from "./SignOutButton";
 import { BottomNav } from "./BottomNav";
@@ -12,11 +12,13 @@ export function TodayScreen() {
   const [today] = useState(computeTodayIso);
   const [selected, setSelected] = useState(today);
   const [doneDates, setDoneDates] = useState<Set<string>>(new Set());
+  const [currentWeekVisible, setCurrentWeekVisible] = useState(true);
+  const stripRef = useRef<WeekStripHandle>(null);
 
   const weekStart = startOfWeek(new Date(`${today}T00:00:00`));
   const weekEnd = addDays(weekStart, 6);
 
-  const rangeStart = toIso(weekStart);
+  const rangeStart = toIso(addDays(weekStart, -WEEKS_BACK * 7));
   const rangeEnd = toIso(weekEnd);
 
   function refreshStatuses() {
@@ -28,6 +30,12 @@ export function TodayScreen() {
   }, [rangeStart, rangeEnd]);
 
   const dateLabel = formatDayLabel(selected);
+  const showTodayButton = selected !== today || !currentWeekVisible;
+
+  function goToToday() {
+    setSelected(today);
+    stripRef.current?.scrollToCurrentWeek();
+  }
 
   return (
     <div className="min-h-screen bg-black pb-24 text-zinc-50">
@@ -39,14 +47,27 @@ export function TodayScreen() {
               {selected === today ? "Aujourd'hui" : "Modifier ce jour"}
             </h1>
           </div>
-          <SignOutButton />
+          <div className="flex items-center gap-3">
+            {showTodayButton && (
+              <button
+                type="button"
+                onClick={goToToday}
+                className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200"
+              >
+                Aujourd&apos;hui
+              </button>
+            )}
+            <SignOutButton />
+          </div>
         </div>
         <WeekStrip
-          weekStart={weekStart}
+          ref={stripRef}
+          currentWeekStart={weekStart}
           todayIso={today}
           selectedIso={selected}
           doneDates={doneDates}
           onSelect={setSelected}
+          onCurrentWeekVisibleChange={setCurrentWeekVisible}
         />
       </header>
 
