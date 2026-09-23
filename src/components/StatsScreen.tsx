@@ -303,7 +303,7 @@ export function StatsScreen() {
               <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <Sparkles size={18} style={{ color: NEVER_BEFORE_COLOR }} />
-                  <h2 className="text-base font-semibold">Sans thème</h2>
+                  <h2 className="text-base font-semibold">Never Before</h2>
                 </div>
                 <div className="flex justify-center gap-2">
                   {orphanDims.map((dim) => (
