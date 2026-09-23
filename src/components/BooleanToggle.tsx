@@ -43,8 +43,8 @@ export function BooleanToggle({
       style={{ backgroundColor: value ? color : "rgba(255,255,255,0.08)" }}
     >
       <span
-        className="absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform"
-        style={{ transform: value ? "translateX(22px)" : "translateX(2px)" }}
+        className="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white transition-transform"
+        style={{ transform: value ? "translateX(20px)" : "translateX(0)" }}
       />
     </button>
   );
