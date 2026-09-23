@@ -55,6 +55,44 @@ function computeDimStat(
   return { kind: "pct", pct: (yes / values.length) * 100, n: values.length };
 }
 
+function shortName(name: string) {
+  const i = name.lastIndexOf(" - ");
+  return i === -1 ? name : name.slice(i + 3);
+}
+
+// Anneau de progression avec la valeur au centre. Taille fluide pour que
+// toutes les dimensions d'un thème tiennent sur une seule ligne.
+function StatRing({ label, stat, color }: { label: string; stat: DimStat | null; color: string }) {
+  const pct = stat ? (stat.kind === "avg" ? (stat.avg / 5) * 100 : stat.pct) : 0;
+  const text = !stat ? "—" : stat.kind === "avg" ? stat.avg.toFixed(1) : `${Math.round(stat.pct)}%`;
+
+  return (
+    <div className="flex min-w-0 max-w-20 flex-1 flex-col items-center gap-1.5">
+      <div className="relative aspect-square w-full">
+        <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+          <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
+          {pct > 0 && (
+            <circle
+              cx="18"
+              cy="18"
+              r="15.915"
+              fill="none"
+              stroke={color}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeDasharray={`${pct} 100`}
+            />
+          )}
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums text-zinc-100">
+          {text}
+        </span>
+      </div>
+      <span className="w-full truncate text-center text-[11px] text-zinc-400">{label}</span>
+    </div>
+  );
+}
+
 export function StatsScreen() {
   const [today] = useState(computeTodayIso);
   const [period, setPeriod] = useState<Period>("month");
@@ -163,35 +201,15 @@ export function StatsScreen() {
                     )}
                   </div>
 
-                  <div className="space-y-3">
-                    {dims.map((dim) => {
-                      const stat = computeDimStat(data.scores, dim.id, dim.type);
-                      const pct = stat
-                        ? stat.kind === "avg"
-                          ? (stat.avg / 5) * 100
-                          : stat.pct
-                        : 0;
-                      return (
-                        <div key={dim.id} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-zinc-300">{dim.name}</span>
-                            <span className="text-zinc-500">
-                              {!stat
-                                ? "—"
-                                : stat.kind === "avg"
-                                  ? `${stat.avg.toFixed(1)} / 5`
-                                  : `${Math.round(stat.pct)}%`}
-                            </span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-                            <div
-                              className="h-full rounded-full"
-                              style={{ width: `${pct}%`, backgroundColor: theme.color }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex justify-between gap-2">
+                    {dims.map((dim) => (
+                      <StatRing
+                        key={dim.id}
+                        label={shortName(dim.name)}
+                        stat={computeDimStat(data.scores, dim.id, dim.type)}
+                        color={theme.color}
+                      />
+                    ))}
                   </div>
                 </section>
               );
@@ -203,27 +221,15 @@ export function StatsScreen() {
                   <Sparkles size={18} style={{ color: NEVER_BEFORE_COLOR }} />
                   <h2 className="text-base font-semibold">Sans thème</h2>
                 </div>
-                <div className="space-y-3">
-                  {orphanDims.map((dim) => {
-                    const stat = computeDimStat(data.scores, dim.id, dim.type);
-                    const pct = stat?.kind === "pct" ? stat.pct : 0;
-                    return (
-                      <div key={dim.id} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-zinc-300">{dim.name}</span>
-                          <span className="text-zinc-500">
-                            {stat?.kind === "pct" ? `${Math.round(stat.pct)}%` : "—"}
-                          </span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${pct}%`, backgroundColor: NEVER_BEFORE_COLOR }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex justify-center gap-2">
+                  {orphanDims.map((dim) => (
+                    <StatRing
+                      key={dim.id}
+                      label={dim.name}
+                      stat={computeDimStat(data.scores, dim.id, dim.type)}
+                      color={NEVER_BEFORE_COLOR}
+                    />
+                  ))}
                 </div>
               </section>
             )}
