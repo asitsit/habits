@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { TodayData } from "@/lib/types";
 
 export async function signIn(_prevState: string | null, formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -24,124 +23,12 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function getTodayData(date: string): Promise<TodayData> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const [{ data: themes }, { data: dimensions }, { data: entry }] = await Promise.all([
-    supabase.from("themes").select("id, name, color, sort_order").order("sort_order"),
-    supabase
-      .from("dimensions")
-      .select("id, theme_id, name, type, group_label, icon, sort_order")
-      .order("sort_order"),
-    supabase
-      .from("entries")
-      .select("id, date, note_text, voice_transcript")
-      .eq("date", date)
-      .maybeSingle(),
-  ]);
-
-  let scores: TodayData["scores"] = [];
-  if (entry) {
-    const { data } = await supabase
-      .from("entry_scores")
-      .select("dimension_id, value_int, value_bool")
-      .eq("entry_id", entry.id);
-    scores = data ?? [];
-  }
-
-  return {
-    date,
-    themes: themes ?? [],
-    dimensions: dimensions ?? [],
-    entry: entry ?? null,
-    scores,
-  };
-}
-
-export async function getDayStatuses(startDate: string, endDate: string): Promise<string[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data } = await supabase
-    .from("entries")
-    .select("date")
-    .gte("date", startDate)
-    .lte("date", endDate);
-
-  return (data ?? []).map((e) => e.date as string);
-}
-
-export type StatsData = {
-  themes: { id: string; name: string; color: string; sort_order: number }[];
-  dimensions: {
-    id: string;
-    theme_id: string | null;
-    name: string;
-    type: "scale" | "boolean";
-    group_label: string | null;
-    sort_order: number;
-  }[];
-  scores: { dimension_id: string; value_int: number | null; value_bool: boolean | null }[];
-  entryCount: number;
-};
-
-export async function getStatsData(startDate: string, endDate: string): Promise<StatsData> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const [{ data: themes }, { data: dimensions }, { data: entries }] = await Promise.all([
-    supabase.from("themes").select("id, name, color, sort_order").order("sort_order"),
-    supabase
-      .from("dimensions")
-      .select("id, theme_id, name, type, group_label, sort_order")
-      .order("sort_order"),
-    supabase.from("entries").select("id").gte("date", startDate).lte("date", endDate),
-  ]);
-
-  const entryIds = (entries ?? []).map((e) => e.id as string);
-  let scores: StatsData["scores"] = [];
-  if (entryIds.length > 0) {
-    const { data } = await supabase
-      .from("entry_scores")
-      .select("dimension_id, value_int, value_bool")
-      .in("entry_id", entryIds);
-    scores = data ?? [];
-  }
-
-  return {
-    themes: themes ?? [],
-    dimensions: dimensions ?? [],
-    scores,
-    entryCount: entryIds.length,
-  };
-}
-
 async function ensureEntry(date: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
 
-  if (!user) {
+  if (!userId) {
     redirect("/login");
   }
 
@@ -150,7 +37,7 @@ async function ensureEntry(date: string) {
   // saved in quick succession (e.g. tapping two toggles back to back).
   const { data: entry, error } = await supabase
     .from("entries")
-    .upsert({ user_id: user.id, date }, { onConflict: "user_id,date" })
+    .upsert({ user_id: userId, date }, { onConflict: "user_id,date" })
     .select("id")
     .single();
 

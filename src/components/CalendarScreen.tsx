@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getDayStatuses } from "@/app/actions";
+import { fetchDayStatuses } from "@/lib/queries";
 import { formatDayLabel, todayIso as computeTodayIso, toIso } from "@/lib/date";
 import { DayEntryForm } from "./DayEntryForm";
 import { BottomNav } from "./BottomNav";
@@ -36,11 +36,11 @@ export function CalendarScreen() {
   const rangeEnd = toIso(days[days.length - 1]);
 
   function refreshStatuses() {
-    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
+    fetchDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
   }
 
   useEffect(() => {
-    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
+    fetchDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
   }, [rangeStart, rangeEnd]);
 
   function changeMonth(delta: number) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Brain, Heart, Dumbbell, Sparkles, type LucideIcon } from "lucide-react";
-import { getStatsData, type StatsData } from "@/app/actions";
+import { fetchStatsData, type StatsData } from "@/lib/queries";
 import { toIso, todayIso as computeTodayIso } from "@/lib/date";
 import { BottomNav } from "./BottomNav";
 
@@ -65,7 +65,7 @@ export function StatsScreen() {
   const { start, end } = periodRange(period, today, customStart, customEnd);
 
   useEffect(() => {
-    getStatsData(start, end).then(setData);
+    fetchStatsData(start, end).then(setData);
   }, [start, end]);
 
   const themedDims = useMemo(

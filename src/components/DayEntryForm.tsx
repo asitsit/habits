@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Brain, Heart, Dumbbell, Sparkles, type LucideIcon } from "lucide-react";
-import { getTodayData } from "@/app/actions";
+import { fetchDayData } from "@/lib/queries";
 import type { Dimension, TodayData } from "@/lib/types";
 import { ScaleSelector } from "./ScaleSelector";
 import { BooleanToggle } from "./BooleanToggle";
@@ -47,7 +47,7 @@ export function DayEntryForm({
   const [data, setData] = useState<TodayData | null>(null);
 
   useEffect(() => {
-    getTodayData(date).then(setData);
+    fetchDayData(date).then(setData);
   }, [date]);
 
   if (!data) {

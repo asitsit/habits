@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDayStatuses } from "@/app/actions";
+import { fetchDayStatuses } from "@/lib/queries";
 import { addDays, formatDayLabel, startOfWeek, toIso, todayIso as computeTodayIso } from "@/lib/date";
 import { WeekStrip } from "./WeekStrip";
 import { DayEntryForm } from "./DayEntryForm";
@@ -20,11 +20,11 @@ export function TodayScreen() {
   const rangeEnd = toIso(weekEnd);
 
   function refreshStatuses() {
-    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
+    fetchDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
   }
 
   useEffect(() => {
-    getDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
+    fetchDayStatuses(rangeStart, rangeEnd).then((dates) => setDoneDates(new Set(dates)));
   }, [rangeStart, rangeEnd]);
 
   const dateLabel = formatDayLabel(selected);

@@ -25,9 +25,10 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims vérifie le JWT localement (clés asymétriques) au lieu d'appeler
+  // le serveur Auth à chaque requête comme le faisait getUser.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
 
