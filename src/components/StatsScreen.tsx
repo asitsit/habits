@@ -60,14 +60,24 @@ function shortName(name: string) {
   return i === -1 ? name : name.slice(i + 3);
 }
 
-// Anneau de progression avec la valeur au centre. Taille fluide pour que
-// toutes les dimensions d'un thème tiennent sur une seule ligne.
+// Une ligne pour les dimensions simples, puis une ligne par groupe (ex. Sport).
+function splitRows<T extends { group_label: string | null }>(dims: T[]) {
+  const singles = dims.filter((d) => !d.group_label);
+  const groups = new Map<string, T[]>();
+  for (const d of dims) {
+    if (d.group_label) groups.set(d.group_label, [...(groups.get(d.group_label) ?? []), d]);
+  }
+  return [singles, ...groups.values()].filter((row) => row.length > 0);
+}
+
+// Anneau de progression avec la valeur au centre. Taille fluide, plafonnée
+// pour rester lisible quand une ligne contient peu d'anneaux.
 function StatRing({ label, stat, color }: { label: string; stat: DimStat | null; color: string }) {
   const pct = stat ? (stat.kind === "avg" ? (stat.avg / 5) * 100 : stat.pct) : 0;
   const text = !stat ? "—" : stat.kind === "avg" ? stat.avg.toFixed(1) : `${Math.round(stat.pct)}%`;
 
   return (
-    <div className="flex min-w-0 max-w-20 flex-1 flex-col items-center gap-1.5">
+    <div className="flex min-w-0 max-w-[5.5rem] flex-1 flex-col items-center gap-1.5">
       <div className="relative aspect-square w-full">
         <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
           <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
@@ -84,11 +94,11 @@ function StatRing({ label, stat, color }: { label: string; stat: DimStat | null;
             />
           )}
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums text-zinc-100">
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-zinc-100">
           {text}
         </span>
       </div>
-      <span className="w-full truncate text-center text-[11px] text-zinc-400">{label}</span>
+      <span className="w-full truncate text-center text-xs text-zinc-400">{label}</span>
     </div>
   );
 }
@@ -201,14 +211,18 @@ export function StatsScreen() {
                     )}
                   </div>
 
-                  <div className="flex justify-between gap-2">
-                    {dims.map((dim) => (
-                      <StatRing
-                        key={dim.id}
-                        label={shortName(dim.name)}
-                        stat={computeDimStat(data.scores, dim.id, dim.type)}
-                        color={theme.color}
-                      />
+                  <div className="space-y-4">
+                    {splitRows(dims).map((row, i) => (
+                      <div key={i} className="flex justify-center gap-3">
+                        {row.map((dim) => (
+                          <StatRing
+                            key={dim.id}
+                            label={shortName(dim.name)}
+                            stat={computeDimStat(data.scores, dim.id, dim.type)}
+                            color={theme.color}
+                          />
+                        ))}
+                      </div>
                     ))}
                   </div>
                 </section>
