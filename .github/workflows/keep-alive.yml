@@ -10,15 +10,31 @@ on:
 
 jobs:
   ping:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Écrit en base via la fonction keep_alive
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          curl --fail-with-body -sS -X POST "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+          # Nettoie les erreurs de copier-coller : espaces, retours à la ligne,
+          # guillemets, "NOM=" en préfixe, slash final.
+          clean() {
+            printf '%s' "$1" | tr -d ' \t\r\n"'"'" | sed -E 's/^[A-Z_]+=//; s#/+$##'
+          }
+          URL=$(clean "$SUPABASE_URL")
+          KEY=$(clean "$SUPABASE_ANON_KEY")
+
+          # Diagnostic sans jamais afficher les valeurs.
+          echo "URL : ${#URL} caractères, commence par https:// ? $([[ $URL == https://* ]] && echo oui || echo NON), finit par .supabase.co ? $([[ $URL == *.supabase.co ]] && echo oui || echo NON)"
+          echo "Clé : ${#KEY} caractères"
+          if [[ $URL != https://*.supabase.co || -z $KEY ]]; then
+            echo "::error::Secret SUPABASE_URL ou SUPABASE_ANON_KEY invalide (voir le diagnostic ci-dessus)."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS -X POST "$URL/rest/v1/rpc/keep_alive" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/json" \
             -d '{}'
